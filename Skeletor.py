@@ -11,6 +11,24 @@ app = adsk.core.Application.get()
 if app:
     ui = app.userInterface
 
+product = app.activeProduct
+design = adsk.fusion.Design.cast(product)
+
+
+def createNewComponent():
+    # Get the active design.
+    rootComp = design.rootComponent
+    allOccs = rootComp.occurrences
+    newOcc = allOccs.addNewComponent(adsk.core.Matrix3D.create())
+    return newOcc.component
+
+
+def createSkeleton(targetBody, boneDiameter, parentComponent):
+    ui.messageBox('inputs: {}, {}, {}'.format(targetBody, boneDiameter, parentComponent))
+
+    for edge in targetBody.edges:
+        # TODO: something smart
+
 
 class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
 
@@ -20,14 +38,34 @@ class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
             command = args.firingEvent.sender
             inputs = command.commandInputs
 
+            if inputs.count != 3:
+                raise ValueError('Unexpected number of inputs: {}'.format(inputs.count))
+
             for input in inputs:
                 if input.id == 'body':
-                    targetBody = input.selection(0)
-                if input.id == 'boneDiameter':
+                    targetBody = input.selection(0).entity
+                elif input.id == 'boneDiameter':
                     boneDiameter = unitsMgr.evaluateExpression(input.expression, "mm")
+                elif input.id == 'operation':
+                    operation = input.selectedItem.name
+                else:
+                    raise ValueError('Unexpected input iud: {}'.format(input.id))
 
-            ui.messageBox('{} {}'.format(targetBody, boneDiameter))
-            args.isValidResult = True
+            # ensure our target has edges and such (ex: a sphere doesn't)
+            if targetBody.edges.count == 0:
+                raise ValueError('Target Body has no edges')
+
+            # create a new component if requested
+            if operation == 'New Body':
+                parentComponent = design.activeComponent
+            elif operation == 'New Component':
+                parentComponent = createNewComponent()
+            else:
+                raise ValueError('Unexpected operation: {}'.format(operation))
+
+            # do the real work
+            createSkeleton(targetBody, boneDiameter, parentComponent)
+            adsk.terminate()
 
         except:
             if ui:
@@ -70,6 +108,10 @@ class SkeletorizeCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
 
             initBoneDiameter = adsk.core.ValueInput.createByString(defaultBoneDiameter)
             inputs.addValueInput('boneDiameter', 'Bone Diameter', 'mm', initBoneDiameter)
+
+            operationInput = inputs.addDropDownCommandInput('operation', 'Operation', 0)
+            operationInput.listItems.add('New Body', True, 'Resources/NewBody/')
+            operationInput.listItems.add('New Component', False, 'Resources/NewComponent/')
 
         except:
             if ui:
