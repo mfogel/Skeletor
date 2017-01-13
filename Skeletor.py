@@ -49,24 +49,17 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
 
         sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
         sweep = sweeps.add(sweepInput)
-        sweepBody = sweep.bodies.item(0)
+        #sweepBody = sweep.bodies.item(0)
 
-        for face in itertools.chain(sweep.startFaces, sweep.endFaces):
-            axisLinePt = face.geometry.origin
-            axisLineDirection = face.geometry.origin.vectorTo(face.vertices.item(0).geometry)
-            axisLine = adsk.core.InfiniteLine3D.create(axisLinePt, axisLineDirection)
+        face = sweep.startFaces.item(0)
 
-            axisInput = axes.createInput()
-            axisInput.setByLine(axisLine)
+        axisInput = axes.createInput()
+        axisInput.setByTwoPoints(edge.startVertex, face.vertices.item(0))
+        axis = axes.add(axisInput)
 
-            # TODO: FIXME
-            # this raises an system error:
-            # "Runtime Error: 3 : Environment is not supported
-            axis = axes.add(axisInput)
-
-            revolveInput = revolves.createInput(face, axis, adsk.fusion.FeatureOperations.JoinFeatureOperation)
-            revolveInput.createionOccurrence = sweepBody
-            revolves.add(revolveInput)
+        revolveInput = revolves.createInput(face, axis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        #revolveInput.createionOccurrence = sweepBody
+        revolves.add(revolveInput)
 
 
 class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
