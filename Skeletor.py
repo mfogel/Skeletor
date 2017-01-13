@@ -1,7 +1,8 @@
 #Author-Mike Fogel
 #Description-
 
-import adsk.core, adsk.fusion, traceback
+import itertools, traceback
+import adsk.core, adsk.fusion
 
 defaultBoneDiameter = '1mm'
 
@@ -24,10 +25,48 @@ def createNewComponent():
 
 
 def createSkeleton(targetBody, boneDiameter, parentComponent):
-    ui.messageBox('inputs: {}, {}, {}'.format(targetBody, boneDiameter, parentComponent))
+
+    planes = parentComponent.constructionPlanes
+    axes = parentComponent.constructionAxes
+    sketches = parentComponent.sketches
+    sweeps = parentComponent.features.sweepFeatures
+    revolves = parentComponent.features.revolveFeatures
+
+    objCol = adsk.core.ObjectCollection.create()
+    for edge in targetBody.edges:
+        objCol.add(edge)
 
     for edge in targetBody.edges:
-        # TODO: something smart
+        planeInput = planes.createInput()
+        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0.5))
+        plane = planes.add(planeInput)
+
+        sketch = sketches.add(plane)
+        sketch.sketchCurves.sketchCircles.addByCenterRadius(sketch.originPoint, boneDiameter/2)
+
+        path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
+        profile = sketch.profiles.item(0)
+
+        sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        sweep = sweeps.add(sweepInput)
+        sweepBody = sweep.bodies.item(0)
+
+        for face in itertools.chain(sweep.startFaces, sweep.endFaces):
+            axisLinePt = face.geometry.origin
+            axisLineDirection = face.geometry.origin.vectorTo(face.vertices.item(0).geometry)
+            axisLine = adsk.core.InfiniteLine3D.create(axisLinePt, axisLineDirection)
+
+            axisInput = axes.createInput()
+            axisInput.setByLine(axisLine)
+
+            # TODO: FIXME
+            # this raises an system error:
+            # "Runtime Error: 3 : Environment is not supported
+            axis = axes.add(axisInput)
+
+            revolveInput = revolves.createInput(face, axis, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+            revolveInput.createionOccurrence = sweepBody
+            revolves.add(revolveInput)
 
 
 class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
