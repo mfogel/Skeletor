@@ -1,8 +1,7 @@
 #Author-Mike Fogel
 #Description-
 
-import itertools, traceback
-import adsk.core, adsk.fusion
+import adsk.core, adsk.fusion, traceback
 
 defaultBoneDiameter = '1mm'
 
@@ -27,38 +26,48 @@ def createNewComponent():
 def createSkeleton(targetBody, boneDiameter, parentComponent):
 
     planes = parentComponent.constructionPlanes
-    axes = parentComponent.constructionAxes
     sketches = parentComponent.sketches
     sweeps = parentComponent.features.sweepFeatures
     revolves = parentComponent.features.revolveFeatures
 
-    objCol = adsk.core.ObjectCollection.create()
-    for edge in targetBody.edges:
-        objCol.add(edge)
+    positivePoint = adsk.core.Point3D.create(boneDiameter/2, 0, 0)
+    negativePoint = adsk.core.Point3D.create(-boneDiameter/2, 0, 0)
+    startMiddlePoint = adsk.core.Point3D.create(0, boneDiameter/2, 0)
+    endMiddlePoint = adsk.core.Point3D.create(0, -boneDiameter/2, 0)
 
     for edge in targetBody.edges:
         planeInput = planes.createInput()
-        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0.5))
+        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0))
         plane = planes.add(planeInput)
 
         sketch = sketches.add(plane)
-        sketch.sketchCurves.sketchCircles.addByCenterRadius(sketch.originPoint, boneDiameter/2)
-
+        sketch.sketchCurves.sketchArcs.addByThreePoints(positivePoint, startMiddlePoint, negativePoint)
+        line = sketch.sketchCurves.sketchLines.addByTwoPoints(negativePoint, positivePoint)
         path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
         profile = sketch.profiles.item(0)
 
         sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-        sweep = sweeps.add(sweepInput)
-        #sweepBody = sweep.bodies.item(0)
+        sweeps.add(sweepInput)
 
-        face = sweep.startFaces.item(0)
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('-180deg'))
+        revolves.add(revolveInput)
 
-        axisInput = axes.createInput()
-        axisInput.setByTwoPoints(edge.startVertex, face.vertices.item(0))
-        axis = axes.add(axisInput)
+        planeInput = planes.createInput()
+        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(1))
+        plane = planes.add(planeInput)
 
-        revolveInput = revolves.createInput(face, axis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-        #revolveInput.createionOccurrence = sweepBody
+        sketch = sketches.add(plane)
+        sketch.sketchCurves.sketchArcs.addByThreePoints(positivePoint, endMiddlePoint, negativePoint)
+        line = sketch.sketchCurves.sketchLines.addByTwoPoints(negativePoint, positivePoint)
+        path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
+        profile = sketch.profiles.item(0)
+
+        sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        sweeps.add(sweepInput)
+
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('180deg'))
         revolves.add(revolveInput)
 
 
