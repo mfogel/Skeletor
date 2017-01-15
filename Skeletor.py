@@ -5,9 +5,6 @@ import adsk.core, adsk.fusion, traceback
 
 defaultBoneDiameter = '1mm'
 
-newBodyOp = 'New Bod(y/ies)'
-newCompOp = 'New Component'
-
 # global set of event handlers to keep them referenced for the duration of the command
 handlers = []
 app = adsk.core.Application.get()
@@ -34,44 +31,53 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
     sweeps = parentComponent.features.sweepFeatures
     revolves = parentComponent.features.revolveFeatures
 
-    positivePoint = adsk.core.Point3D.create(boneDiameter/2, 0, 0)
-    negativePoint = adsk.core.Point3D.create(-boneDiameter/2, 0, 0)
-    startMiddlePoint = adsk.core.Point3D.create(0, boneDiameter/2, 0)
-    endMiddlePoint = adsk.core.Point3D.create(0, -boneDiameter/2, 0)
+    xPosPoint = adsk.core.Point3D.create(boneDiameter/2, 0, 0)
+    xNegPoint = adsk.core.Point3D.create(-boneDiameter/2, 0, 0)
+
+    yPosPoint = adsk.core.Point3D.create(0, boneDiameter/2, 0)
+    yNegPoint = adsk.core.Point3D.create(0, -boneDiameter/2, 0)
+
+    vertexId2Sketch = {}
 
     for edge in targetBody.edges:
+
+        if edge.startVertex.tempId not in vertexId2Sketch:
+            targetVertex = edge.startVertex
+            pathDistance = adsk.core.ValueInput.createByReal(0)
+        elif edge.endVertex.tempId not in vertexId2Sketch:
+            targetVertex = edge.endVertex
+            pathDistance = adsk.core.ValueInput.createByReal(1)
+        else:
+            targetVertex = None
+            pathDistance = adsk.core.ValueInput.createByReal(0.5)
+
         planeInput = planes.createInput()
-        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0))
+        planeInput.setByDistanceOnPath(edge, pathDistance)
         plane = planes.add(planeInput)
 
         sketch = sketches.add(plane)
-        sketch.sketchCurves.sketchArcs.addByThreePoints(positivePoint, startMiddlePoint, negativePoint)
-        line = sketch.sketchCurves.sketchLines.addByTwoPoints(negativePoint, positivePoint)
+        sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yPosPoint, xNegPoint)
+        sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yNegPoint, xNegPoint)
+
+        if targetVertex:
+            vertexId2Sketch[targetVertex.tempId] = sketch
+
         path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
         profile = sketch.profiles.item(0)
-
         sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
         sweeps.add(sweepInput)
 
-        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
-        revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('-180deg'))
-        revolves.add(revolveInput)
+    for vertex in targetBody.vertices:
 
-        planeInput = planes.createInput()
-        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(1))
-        plane = planes.add(planeInput)
+        sketch = vertexId2Sketch.get(vertex.tempId)
+        if not sketch:
+            raise Exception('No sketch constructed for vertex')
 
-        sketch = sketches.add(plane)
-        sketch.sketchCurves.sketchArcs.addByThreePoints(positivePoint, endMiddlePoint, negativePoint)
-        line = sketch.sketchCurves.sketchLines.addByTwoPoints(negativePoint, positivePoint)
-        path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
+        line = sketch.sketchCurves.sketchLines.addByTwoPoints(xPosPoint, xNegPoint)
         profile = sketch.profiles.item(0)
 
-        sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.JoinFeatureOperation)
-        sweeps.add(sweepInput)
-
         revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
-        revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('180deg'))
+        revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('360deg'))
         revolves.add(revolveInput)
 
 
