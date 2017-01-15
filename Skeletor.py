@@ -5,6 +5,9 @@ import adsk.core, adsk.fusion, traceback
 
 defaultBoneDiameter = '1mm'
 
+newBodyOp = 'New Bod(y/ies)'
+newCompOp = 'New Component'
+
 # global set of event handlers to keep them referenced for the duration of the command
 handlers = []
 app = adsk.core.Application.get()
@@ -15,12 +18,13 @@ product = app.activeProduct
 design = adsk.fusion.Design.cast(product)
 
 
-def createNewComponent():
+def createNewComponent(name):
     # Get the active design.
     rootComp = design.rootComponent
     allOccs = rootComp.occurrences
-    newOcc = allOccs.addNewComponent(adsk.core.Matrix3D.create())
-    return newOcc.component
+    component = allOccs.addNewComponent(adsk.core.Matrix3D.create()).component
+    component.name = name
+    return component
 
 
 def createSkeleton(targetBody, boneDiameter, parentComponent):
@@ -49,7 +53,7 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
         sweeps.add(sweepInput)
 
-        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
         revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('-180deg'))
         revolves.add(revolveInput)
 
@@ -63,10 +67,10 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
         profile = sketch.profiles.item(0)
 
-        sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.JoinFeatureOperation)
         sweeps.add(sweepInput)
 
-        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
         revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('180deg'))
         revolves.add(revolveInput)
 
@@ -79,7 +83,7 @@ class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
             command = args.firingEvent.sender
             inputs = command.commandInputs
 
-            if inputs.count != 3:
+            if inputs.count != 2:
                 raise ValueError('Unexpected number of inputs: {}'.format(inputs.count))
 
             for input in inputs:
@@ -87,8 +91,6 @@ class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
                     targetBody = input.selection(0).entity
                 elif input.id == 'boneDiameter':
                     boneDiameter = unitsMgr.evaluateExpression(input.expression, "mm")
-                elif input.id == 'operation':
-                    operation = input.selectedItem.name
                 else:
                     raise ValueError('Unexpected input iud: {}'.format(input.id))
 
@@ -96,15 +98,8 @@ class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
             if targetBody.edges.count == 0:
                 raise ValueError('Target Body has no edges')
 
-            # create a new component if requested
-            if operation == 'New Body':
-                parentComponent = design.activeComponent
-            elif operation == 'New Component':
-                parentComponent = createNewComponent()
-            else:
-                raise ValueError('Unexpected operation: {}'.format(operation))
-
             # do the real work
+            parentComponent = createNewComponent(targetBody.name + ' Skeleton')
             createSkeleton(targetBody, boneDiameter, parentComponent)
             adsk.terminate()
 
@@ -149,10 +144,6 @@ class SkeletorizeCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
 
             initBoneDiameter = adsk.core.ValueInput.createByString(defaultBoneDiameter)
             inputs.addValueInput('boneDiameter', 'Bone Diameter', 'mm', initBoneDiameter)
-
-            operationInput = inputs.addDropDownCommandInput('operation', 'Operation', 0)
-            operationInput.listItems.add('New Body', True, 'Resources/NewBody/')
-            operationInput.listItems.add('New Component', False, 'Resources/NewComponent/')
 
         except:
             if ui:
