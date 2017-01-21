@@ -26,6 +26,13 @@ def createNewComponent(name):
 
 def createSkeleton(targetBody, boneDiameter, parentComponent):
 
+    orgDesignType = design.designType
+    design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+
+    baseFeat = design.rootComponent.features.baseFeatures.add()
+    baseFeat.name = "Skeletorize " + targetBody.name
+    baseFeat.startEdit()
+
     planes = parentComponent.constructionPlanes
     sketches = parentComponent.sketches
     sweeps = parentComponent.features.sweepFeatures
@@ -53,9 +60,12 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
 
         planeInput = planes.createInput()
         planeInput.setByDistanceOnPath(edge, pathDistance)
+
+        planeInput.targetBaseOrFormFeature = baseFeat
         plane = planes.add(planeInput)
 
-        sketch = sketches.add(plane)
+        #sketch = sketches.add(plane)
+        sketch = sketches.addToBaseOrFormFeature(plane, baseFeat, False)
         sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yPosPoint, xNegPoint)
         sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yNegPoint, xNegPoint)
 
@@ -65,6 +75,7 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
         profile = sketch.profiles.item(0)
         sweepInput = sweeps.createInput(profile, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        sweepInput.targetBaseOrFormFeature = baseFeat
         sweeps.add(sweepInput)
 
     for vertex in targetBody.vertices:
@@ -76,9 +87,13 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         line = sketch.sketchCurves.sketchLines.addByTwoPoints(xPosPoint, xNegPoint)
         profile = sketch.profiles.item(0)
 
-        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
         revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('360deg'))
+        revolveInput.baseFeature = baseFeat
         revolves.add(revolveInput)
+
+    baseFeat.finishEdit()
+    design.designType = orgDesignType
 
 
 class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
