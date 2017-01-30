@@ -26,7 +26,7 @@ def createNewComponent(name):
 
 def createSkeleton(targetBody, boneDiameter, parentComponent):
 
-    baseFeat = design.rootComponent.features.baseFeatures.add()
+    baseFeat = parentComponent.features.baseFeatures.add()
     baseFeat.name = "Skeletorize " + targetBody.name
     baseFeat.startEdit()
 
@@ -78,7 +78,7 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         line = sketch.sketchCurves.sketchLines.addByTwoPoints(xPosPoint, xNegPoint)
         profile = sketch.profiles.item(0)
 
-        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
         revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('360deg'))
         revolveInput.baseFeature = baseFeat
         revolves.add(revolveInput)
