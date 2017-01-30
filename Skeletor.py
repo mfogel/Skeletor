@@ -45,19 +45,8 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
 
     for edge in targetBody.edges:
 
-        if edge.startVertex.tempId not in vertexId2Sketch:
-            targetVertex = edge.startVertex
-            pathDistance = adsk.core.ValueInput.createByReal(0)
-        elif edge.endVertex.tempId not in vertexId2Sketch:
-            targetVertex = edge.endVertex
-            pathDistance = adsk.core.ValueInput.createByReal(1)
-        else:
-            targetVertex = None
-            pathDistance = adsk.core.ValueInput.createByReal(0.5)
-
         planeInput = planes.createInput()
-        planeInput.setByDistanceOnPath(edge, pathDistance)
-
+        planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0))
         planeInput.targetBaseOrFormFeature = baseFeat
         plane = planes.add(planeInput)
 
@@ -66,8 +55,7 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yPosPoint, xNegPoint)
         sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yNegPoint, xNegPoint)
 
-        if targetVertex:
-            vertexId2Sketch[targetVertex.tempId] = sketch
+        vertexId2Sketch[edge.startVertex.tempId] = sketch
 
         path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
         profile = sketch.profiles.item(0)
