@@ -26,9 +26,6 @@ def createNewComponent(name):
 
 def createSkeleton(targetBody, boneDiameter, parentComponent):
 
-    orgDesignType = design.designType
-    design.designType = adsk.fusion.DesignTypes.ParametricDesignType
-
     baseFeat = design.rootComponent.features.baseFeatures.add()
     baseFeat.name = "Skeletorize " + targetBody.name
     baseFeat.startEdit()
@@ -93,7 +90,6 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         revolves.add(revolveInput)
 
     baseFeat.finishEdit()
-    design.designType = orgDesignType
 
 
 class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
