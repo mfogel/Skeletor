@@ -70,7 +70,10 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
 
         sketch = vertexId2Sketch.get(vertex.tempId)
         if not sketch:
-            raise Exception('No sketch constructed for vertex')
+            sketch = sketches.addToBaseOrFormFeature(plane, baseFeat, False)
+            sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yPosPoint, xNegPoint)
+            sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yNegPoint, xNegPoint)
+            allSketches.append(sketch)
 
         line = sketch.sketchCurves.sketchLines.addByTwoPoints(xPosPoint, xNegPoint)
         profile = sketch.profiles.item(0)
