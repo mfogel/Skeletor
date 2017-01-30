@@ -173,9 +173,14 @@ def run(context):
     try:
         product = app.activeProduct
         design = adsk.fusion.Design.cast(product)
+
         if not design:
-            ui.messageBox('It is not supported in current workspace, please change to MODEL workspace and try again.')
+            ui.messageBox('Error: Skeletorizing requires being in the Model workspace')
             return
+        if design.designType is not adsk.fusion.DesignTypes.ParametricDesignType:
+            ui.messageBox('Error: Skeletorizing requires being in parametric design mode (timeline must be active)')
+            return
+
         commandDefinitions = ui.commandDefinitions
         #check the command exists or not
         cmdDef = commandDefinitions.itemById('Skeletorize')
