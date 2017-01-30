@@ -115,6 +115,7 @@ class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
             # do the real work
             parentComponent = createNewComponent(targetBody.name + ' Skeleton')
             createSkeleton(targetBody, boneDiameter, parentComponent)
+            targetBody.isLightBulbOn = False
             adsk.terminate()
 
         except:
