@@ -42,8 +42,6 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
     yNegPoint = adsk.core.Point3D.create(0, -boneDiameter/2, 0)
 
     vertexId2Sketch = {}
-    allSketches = []
-    allPlanes = []
 
     for edge in targetBody.edges:
 
@@ -51,14 +49,12 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
         planeInput.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0))
         planeInput.targetBaseOrFormFeature = baseFeat
         plane = planes.add(planeInput)
-        allPlanes.append(plane)
 
         #sketch = sketches.add(plane)
         sketch = sketches.addToBaseOrFormFeature(plane, baseFeat, False)
         sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yPosPoint, xNegPoint)
         sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yNegPoint, xNegPoint)
         vertexId2Sketch[edge.startVertex.tempId] = sketch
-        allSketches.append(sketch)
 
         path = adsk.fusion.Path.create(edge, adsk.fusion.ChainedCurveOptions.noChainedCurves)
         profile = sketch.profiles.item(0)
@@ -73,23 +69,16 @@ def createSkeleton(targetBody, boneDiameter, parentComponent):
             sketch = sketches.addToBaseOrFormFeature(plane, baseFeat, False)
             sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yPosPoint, xNegPoint)
             sketch.sketchCurves.sketchArcs.addByThreePoints(xPosPoint, yNegPoint, xNegPoint)
-            allSketches.append(sketch)
 
         line = sketch.sketchCurves.sketchLines.addByTwoPoints(xPosPoint, xNegPoint)
         profile = sketch.profiles.item(0)
 
-        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+        revolveInput = revolves.createInput(profile, line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
         revolveInput.setAngleExtent(False, adsk.core.ValueInput.createByString('360deg'))
         revolveInput.baseFeature = baseFeat
         revolves.add(revolveInput)
 
     baseFeat.finishEdit()
-
-    # clean up after ourselves
-    for sketch in allSketches:
-        sketch.deleteMe()
-    for plane in allPlanes:
-        plane.deleteMe()
 
 
 class SkeletorizeCommandExecuteHandler(adsk.core.CommandEventHandler):
