@@ -145,7 +145,7 @@ class SkeletorizeCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             #define the inputs
             inputs = cmd.commandInputs
 
-            bodyInput = inputs.addSelectionInput('body', 'Body', 'Please select a Body to skeletorize')
+            bodyInput = inputs.addSelectionInput('body', 'BRep Body', 'Please select a Body to skeletorize')
             bodyInput.addSelectionFilter(adsk.core.SelectionCommandInput.Bodies);
             bodyInput.setSelectionLimits(1, 1)
 
